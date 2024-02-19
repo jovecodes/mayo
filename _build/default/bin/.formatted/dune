@@ -1,0 +1,4 @@
+(executable
+ (public_name mayo)
+ (name main)
+ (libraries mayo))
