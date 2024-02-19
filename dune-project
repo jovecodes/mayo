@@ -5,11 +5,11 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github jovecodes/mayo))
 
-(authors "Author Name")
+(authors "Jove Beckett")
 
-(maintainers "Maintainer Name")
+(maintainers "Jove Beckett")
 
 (license LICENSE)
 

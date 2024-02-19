@@ -3,5 +3,8 @@
 (** @canonical Dune__exe.Lexer *)
 module Lexer = Dune__exe__Lexer
 
+(** @canonical Dune__exe.Log *)
+module Log = Dune__exe__Log
+
 (** @canonical Dune__exe.Main *)
 module Main = Dune__exe__Main

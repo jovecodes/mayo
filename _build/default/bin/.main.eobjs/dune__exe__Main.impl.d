@@ -1,1 +1,1 @@
-bin/main.ml: Lexer List
+bin/main.ml: Arg Lexer List Log

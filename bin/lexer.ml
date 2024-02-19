@@ -1,6 +1,6 @@
 type number = Float of float | Int of int
 type operator = Mul | Div | Add | Sub
-type position = { line : int; column : int }
+type position = { line : int; column : int; file : string }
 
 type token_kind =
   | Ident of string
@@ -14,7 +14,7 @@ let explode_string s = List.init (String.length s) (String.get s)
 
 let advance_pos (pos, c) =
   match c with
-  | '\n' -> { line = pos.line + 1; column = 1 }
+  | '\n' -> { line = pos.line + 1; column = 1; file = pos.file }
   | _ -> { pos with column = pos.column + 1 }
 
 let token_from_string string =
@@ -40,8 +40,8 @@ let create_token (tokens, word_buffer) =
   | "" -> tokens
   | _ -> tokens @ [ token_from_string word_buffer ]
 
-let lex file_content =
-  let position = { line = 1; column = 1 } in
+let lex file_content file_path =
+  let position = { line = 1; column = 1; file = file_path } in
   let rec impl (file, tokens, word_buffer, pos, last_pos) =
     let push_token () =
       match token_from_string word_buffer with
@@ -105,9 +105,6 @@ let get_line_from_string line_number text =
       print_endline "Line number out of range";
       ""
 
-let red_text text = Printf.sprintf "\027[31m%s\027[0m" text
-let bold_text text = Printf.sprintf "\027[1m%s\027[0m" text
-
 let print_token_span (t, file) =
   let column_start = t.pos.column - (t.len - 1) in
   let column =
@@ -115,12 +112,13 @@ let print_token_span (t, file) =
     else Printf.sprintf "%i" t.pos.column
   in
   print_endline
-    (bold_text
-       (Printf.sprintf "File: TODO, line %i, column %s" t.pos.line column));
+    (Log.bold_text
+       (Printf.sprintf "File: %s, line %i, column %s" t.pos.file t.pos.line
+          column));
   Printf.printf "%i | %s\n" t.pos.line (get_line_from_string t.pos.line file);
   let len = String.length (Printf.sprintf "%i | " t.pos.line) in
   let spaces = String.make (len + column_start - 1) ' ' in
-  let carrots = red_text (String.make t.len '^') in
+  let carrots = Log.red_text (String.make t.len '^') in
   Printf.printf "%s%s\n" spaces carrots;
   ()
 
