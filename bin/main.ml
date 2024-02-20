@@ -24,9 +24,9 @@ let () =
   for i = 0 to List.length token_lists - 1 do
     let tokens = Util.unwrap (List.nth_opt token_lists i) in
     let ast = Parser.parse_expr (ref tokens) in
+    print_endline (Lexer.tokens_to_string_dbg tokens);
     print_endline (Parser.ast_to_string ast);
     Parser.print_ast_span ast.span (read_whole_file ast.span.file)
-    (* print_endline (Lexer.tokens_to_string_dbg tokens) *)
     (* match List.nth_opt tokens 4 with *)
     (* | Some t -> Lexer.print_token_span (t, file_content) *)
     (* | _ -> () *)

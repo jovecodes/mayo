@@ -1,12 +1,14 @@
 type number = Float of float | Int of int
 type operator = Mul | Div | Add | Sub
 type position = { line : int; column : int; file : string }
+type punct = LParen | RParen
 
 type token_kind =
   | Ident of string
   | Number of number
   | Boolean of bool
   | Operator of operator
+  | Punct of punct
 
 type token = { kind : token_kind; pos : position; len : int }
 
@@ -21,10 +23,6 @@ let token_from_string string =
   match string with
   | "" -> None
   | "true" | "false" -> Some (Boolean (bool_of_string string))
-  | "*" -> Some (Operator Mul)
-  | "/" -> Some (Operator Div)
-  | "+" -> Some (Operator Add)
-  | "-" -> Some (Operator Sub)
   | _ -> (
       try
         let int_value = int_of_string string in
@@ -34,6 +32,16 @@ let token_from_string string =
           let float_value = float_of_string string in
           Some (Number (Float float_value))
         with _ -> Some (Ident string)))
+
+let token_from_char c =
+  match c with
+  | '*' -> Some (Operator Mul)
+  | '/' -> Some (Operator Div)
+  | '+' -> Some (Operator Add)
+  | '-' -> Some (Operator Sub)
+  | '(' -> Some (Punct LParen)
+  | ')' -> Some (Punct RParen)
+  | _ -> None
 
 let create_token (tokens, word_buffer) =
   match word_buffer with
@@ -61,6 +69,14 @@ let lex file_content file_path =
         impl (rest, push_token (), "", advance_pos (pos, '\n'), last_pos)
     | ' ' :: rest ->
         impl (rest, push_token (), "", advance_pos (pos, ' '), last_pos)
+    | c :: rest when Option.is_some (token_from_char c) ->
+        impl
+          ( rest,
+            push_token ()
+            @ [ { kind = Util.unwrap (token_from_char c); pos; len = 1 } ],
+            "",
+            advance_pos (pos, c),
+            last_pos )
     | c :: rest ->
         impl
           ( rest,
@@ -74,6 +90,8 @@ let lex file_content file_path =
 let operator_to_string op =
   match op with Mul -> "*" | Div -> "/" | Add -> "+" | Sub -> "-"
 
+let punct_to_string p = match p with LParen -> "(" | RParen -> ")"
+
 let num_to_string num =
   match num with
   | Float f -> Printf.sprintf "%f" f
@@ -85,6 +103,7 @@ let token_kind_to_string t =
   | Number num -> num_to_string num
   | Boolean b -> if b then "true" else "false"
   | Operator op -> operator_to_string op
+  | Punct p -> punct_to_string p
 
 let token_kind_to_string_dbg t =
   match t with
@@ -92,6 +111,7 @@ let token_kind_to_string_dbg t =
   | Number num -> num_to_string num
   | Boolean b -> if b then "true" else "false"
   | Operator op -> Printf.sprintf "Op(%s)" (operator_to_string op)
+  | Punct p -> Printf.sprintf "Punc(%s)" (punct_to_string p)
 
 let position_to_string pos = Printf.sprintf "%i:%i" pos.line pos.column
 
