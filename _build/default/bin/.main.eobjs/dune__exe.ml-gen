@@ -8,3 +8,9 @@ module Log = Dune__exe__Log
 
 (** @canonical Dune__exe.Main *)
 module Main = Dune__exe__Main
+
+(** @canonical Dune__exe.Parser *)
+module Parser = Dune__exe__Parser
+
+(** @canonical Dune__exe.Util *)
+module Util = Dune__exe__Util

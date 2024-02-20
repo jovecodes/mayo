@@ -26,7 +26,10 @@ let () =
   if List.length token_lists == 0 then Log.print_fatal "no input files";
   for i = 0 to List.length token_lists - 1 do
     let tokens = list_unwrap (List.nth_opt token_lists i) in
-    print_endline (Lexer.tokens_to_string_dbg tokens)
+    let ast = Parser.parse_expr (ref tokens) in
+    print_endline (Parser.ast_to_string ast);
+    ()
+    (* print_endline (Lexer.tokens_to_string_dbg tokens) *)
     (* match List.nth_opt tokens 4 with *)
     (* | Some t -> Lexer.print_token_span (t, file_content) *)
     (* | _ -> () *)
