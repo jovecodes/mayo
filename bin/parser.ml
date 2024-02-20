@@ -4,12 +4,23 @@ type ast_node_kind =
   | Number of Lexer.number
 
 and ast_node = { kind : ast_node_kind; span : span }
-and span = { f : Lexer.position; t : Lexer.position }
+and span = { f : Lexer.position; t : Lexer.position; file : string }
 
-let span_todo () =
+let span_from_to_token (from_t : Lexer.token) (to_t : Lexer.token) =
   {
-    f = { line = 0; column = 0; file = "TODO" };
-    t = { line = 0; column = 0; file = "TODO" };
+    f = { from_t.pos with column = from_t.pos.column - from_t.len };
+    t = to_t.pos;
+    file = from_t.pos.file;
+  }
+
+let span_from_to_node (from_n : ast_node) (to_n : ast_node) =
+  { f = from_n.span.f; t = to_n.span.t; file = from_n.span.file }
+
+let span_single (t : Lexer.token) =
+  {
+    f = { t.pos with column = t.pos.column - t.len };
+    t = t.pos;
+    file = t.pos.file;
   }
 
 let rec ast_to_string ast =
@@ -27,27 +38,12 @@ let parse_primary (tokens : Lexer.token list ref) =
       match token.kind with
       | Lexer.Ident id ->
           tokens := rest;
-          Some { kind = Ident id; span = span_todo () }
+          Some { kind = Ident id; span = span_single token }
       | Lexer.Number num ->
           tokens := rest;
-          Some { kind = Number num; span = span_todo () }
+          Some { kind = Number num; span = span_single token }
       | _ -> None)
   | _ -> None
-
-(* parse_expression_1(lhs, min_precedence) *)
-(*     lookahead := peek next token *)
-(*     while lookahead is a binary operator whose precedence is >= min_precedence *)
-(*         op := lookahead *)
-(*         advance to next token *)
-(*         rhs := parse_primary () *)
-(*         lookahead := peek next token *)
-(*         while lookahead is a binary operator whose precedence is greater *)
-(*                  than op's, or a right-associative operator *)
-(*                  whose precedence is equal to op's *)
-(*             rhs := parse_expression_1 (rhs, precedence of op + (1 if lookahead precedence is greater, else 0)) *)
-(*             lookahead := peek next token *)
-(*         lhs := the result of applying op with operands lhs and rhs *)
-(*     return lhs *)
 
 let should_keep_going (tokens : Lexer.token list) min_prec =
   match tokens with
@@ -72,10 +68,25 @@ let rec parse_expression_1 (tokens : Lexer.token list ref) (lhs : ast_node ref)
           when Lexer.op_prec next_op > Lexer.op_prec op ->
             rhs := parse_expression_1 tokens rhs (min_precedence + 1)
         | _ -> ());
-        lhs := { kind = BinOp (!lhs, op, !rhs); span = span_todo () }
+        lhs :=
+          { kind = BinOp (!lhs, op, !rhs); span = span_from_to_node !lhs !rhs }
     | _ -> ()
   done;
   !lhs
+
+let span_len s = s.t.column - s.f.column
+
+let print_ast_span s file =
+  print_endline
+    (Log.bold_text
+       (Printf.sprintf "File: %s, line %i-%i, column %i-%i" s.file s.f.line
+          s.t.line s.f.column s.t.column));
+  Printf.printf "%i | %s\n" s.f.line (Util.get_line_from_string s.f.line file);
+  let len = String.length (Printf.sprintf "%i | " s.f.line) in
+  let spaces = String.make (len + s.f.column) ' ' in
+  let carrots = Log.red_text (String.make (span_len s) '^') in
+  Printf.printf "%s%s\n" spaces carrots;
+  ()
 
 let parse_expr (tokens : Lexer.token list ref) =
   let primary = parse_primary tokens in

@@ -1,1 +1,1 @@
-bin/lexer.ml: List Log Printf String
+bin/lexer.ml: List Log Printf String Util

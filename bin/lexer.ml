@@ -102,14 +102,6 @@ let token_to_string_dbg t =
 
 let token_to_string t = Printf.sprintf "%s" (token_kind_to_string t.kind)
 
-let get_line_from_string line_number text =
-  let lines = String.split_on_char '\n' text in
-  match List.nth_opt lines (line_number - 1) with
-  | Some line -> line
-  | None ->
-      print_endline "Line number out of range";
-      ""
-
 let print_token_span (t, file) =
   let column_start = t.pos.column - (t.len - 1) in
   let column =
@@ -120,7 +112,8 @@ let print_token_span (t, file) =
     (Log.bold_text
        (Printf.sprintf "File: %s, line %i, column %s" t.pos.file t.pos.line
           column));
-  Printf.printf "%i | %s\n" t.pos.line (get_line_from_string t.pos.line file);
+  Printf.printf "%i | %s\n" t.pos.line
+    (Util.get_line_from_string t.pos.line file);
   let len = String.length (Printf.sprintf "%i | " t.pos.line) in
   let spaces = String.make (len + column_start - 1) ' ' in
   let carrots = Log.red_text (String.make t.len '^') in
