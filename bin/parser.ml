@@ -32,19 +32,6 @@ let rec ast_to_string ast =
   | Ident s -> s
   | Number num -> Lexer.num_to_string num
 
-let parse_primary (tokens : Lexer.token list ref) =
-  match !tokens with
-  | token :: rest -> (
-      match token.kind with
-      | Lexer.Ident id ->
-          tokens := rest;
-          Some { kind = Ident id; span = span_single token }
-      | Lexer.Number num ->
-          tokens := rest;
-          Some { kind = Number num; span = span_single token }
-      | _ -> None)
-  | _ -> None
-
 let should_keep_going (tokens : Lexer.token list) min_prec =
   match tokens with
   | token :: _ -> (
@@ -52,27 +39,6 @@ let should_keep_going (tokens : Lexer.token list) min_prec =
       | Lexer.Operator op -> Lexer.op_prec op >= min_prec
       | _ -> false)
   | _ -> false
-
-let rec parse_expression_1 (tokens : Lexer.token list ref) (lhs : ast_node ref)
-    min_precedence =
-  while should_keep_going !tokens min_precedence do
-    match !tokens with
-    | { kind = Lexer.Operator op; _ } :: rest ->
-        tokens := rest;
-
-        let rhs_maybe = parse_primary tokens in
-        let rhs = ref (Util.unwrap rhs_maybe) in
-
-        (match !tokens with
-        | { kind = Lexer.Operator next_op; _ } :: _
-          when Lexer.op_prec next_op > Lexer.op_prec op ->
-            rhs := parse_expression_1 tokens rhs (min_precedence + 1)
-        | _ -> ());
-        lhs :=
-          { kind = BinOp (!lhs, op, !rhs); span = span_from_to_node !lhs !rhs }
-    | _ -> ()
-  done;
-  !lhs
 
 let span_len s = s.t.column - s.f.column
 
@@ -88,8 +54,68 @@ let print_ast_span s file =
   Printf.printf "%s%s\n" spaces carrots;
   ()
 
-let parse_expr (tokens : Lexer.token list ref) =
+let print_ast_node_span n =
+  print_ast_span n.span (Util.read_whole_file n.span.file)
+
+let rec parse_primary (tokens : Lexer.token list ref) =
+  match !tokens with
+  | token :: rest -> (
+      match token.kind with
+      | Lexer.Ident id ->
+          tokens := rest;
+          Some { kind = Ident id; span = span_single token }
+      | Lexer.Number num ->
+          tokens := rest;
+          Some { kind = Number num; span = span_single token }
+      | Lexer.Punct Lexer.LParen -> (
+          (match !tokens with
+          | { kind = Lexer.Punct Lexer.LParen; _ } :: rest -> tokens := rest
+          | _ -> Log.print_fatal "expected '('");
+          print_endline (Lexer.tokens_to_string !tokens);
+          let token = parse_expr tokens in
+          match !tokens with
+          | { kind = Lexer.Punct Lexer.RParen; _ } :: rest ->
+              tokens := rest;
+              token
+          | _ ->
+              print_ast_node_span (Util.unwrap token);
+              Log.print_fatal "expected ')' after expression";
+              None)
+      | _ ->
+          Log.print_fatal
+            (Printf.sprintf "Unexpected token %s" (Lexer.token_to_string token));
+          None)
+  | _ -> None
+
+and parse_expression_1 (tokens : Lexer.token list ref) (lhs : ast_node ref)
+    min_precedence =
+  while should_keep_going !tokens min_precedence do
+    match !tokens with
+    | { kind = Lexer.Operator op; _ } :: rest -> (
+        tokens := rest;
+
+        let rhs_maybe = parse_primary tokens in
+        match rhs_maybe with
+        | Some rhs_some ->
+            let rhs = ref rhs_some in
+
+            (match !tokens with
+            | { kind = Lexer.Operator next_op; _ } :: _
+              when Lexer.op_prec next_op > Lexer.op_prec op ->
+                rhs := parse_expression_1 tokens rhs (min_precedence + 1)
+            | _ -> ());
+            lhs :=
+              {
+                kind = BinOp (!lhs, op, !rhs);
+                span = span_from_to_node !lhs !rhs;
+              }
+        | _ -> () (* todo: leave an error message *))
+    | _ -> ()
+  done;
+  !lhs
+
+and parse_expr (tokens : Lexer.token list ref) =
   let primary = parse_primary tokens in
   match primary with
-  | Some t -> parse_expression_1 tokens (ref t) 0
+  | Some t -> Some (parse_expression_1 tokens (ref t) 0)
   | _ -> failwith "could not parse primary"

@@ -111,7 +111,7 @@ let token_kind_to_string_dbg t =
   | Number num -> num_to_string num
   | Boolean b -> if b then "true" else "false"
   | Operator op -> Printf.sprintf "Op(%s)" (operator_to_string op)
-  | Punct p -> Printf.sprintf "Punc(%s)" (punct_to_string p)
+  | Punct p -> Printf.sprintf "Punc('%s')" (punct_to_string p)
 
 let position_to_string pos = Printf.sprintf "%i:%i" pos.line pos.column
 

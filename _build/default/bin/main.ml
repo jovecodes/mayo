@@ -1,14 +1,10 @@
-let read_whole_file filename =
-  let ch = open_in_bin filename in
-  let s = really_input_string ch (in_channel_length ch) in
-  close_in ch;
-  s
-
 let rec lex_files token_lists files =
   match files with
   | [] -> token_lists
   | file :: rest ->
-      lex_files (token_lists @ [ Lexer.lex (read_whole_file file) file ]) rest
+      lex_files
+        (token_lists @ [ Lexer.lex (Util.read_whole_file file) file ])
+        rest
 
 let usage_msg = "mayo -o <output> <sources>... "
 let input_files = ref []
@@ -23,10 +19,9 @@ let () =
   if List.length token_lists == 0 then Log.print_fatal "no input files";
   for i = 0 to List.length token_lists - 1 do
     let tokens = Util.unwrap (List.nth_opt token_lists i) in
-    let ast = Parser.parse_expr (ref tokens) in
-    print_endline (Lexer.tokens_to_string_dbg tokens);
-    print_endline (Parser.ast_to_string ast);
-    Parser.print_ast_span ast.span (read_whole_file ast.span.file)
+    match Parser.parse_expr (ref tokens) with
+    | Some ast -> print_endline (Parser.ast_to_string ast)
+    | _ -> ()
     (* match List.nth_opt tokens 4 with *)
     (* | Some t -> Lexer.print_token_span (t, file_content) *)
     (* | _ -> () *)
