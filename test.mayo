@@ -2,4 +2,6 @@
 //    print(10 + 2, "Hello");
 //    return 0;
 // }
-1 + 2
+let x = print(10)
+let y = 10
+

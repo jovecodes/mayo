@@ -1,7 +1,8 @@
 type number = Float of float | Int of int
 type operator = Mul | Div | Add | Sub
 type position = { line : int; column : int; file : string }
-type punct = LParen | RParen | Comma
+type punct = LParen | RParen | Comma | SemiColon | Assign
+type keyword = Let
 
 type token_kind =
   | Ident of string
@@ -9,6 +10,7 @@ type token_kind =
   | StrLit of string
   | Boolean of bool
   | Operator of operator
+  | Keyword of keyword
   | Punct of punct
 
 type token = { kind : token_kind; pos : position; len : int }
@@ -26,6 +28,7 @@ let token_from_string string =
   | string when String.starts_with ~prefix:"\"" string ->
       Some (StrLit (String.sub string 1 (String.length string - 2)))
   | "true" | "false" -> Some (Boolean (bool_of_string string))
+  | "let" -> Some (Keyword Let)
   | _ -> (
       try
         let int_value = int_of_string string in
@@ -45,6 +48,8 @@ let token_from_char c =
   | '(' -> Some (Punct LParen)
   | ')' -> Some (Punct RParen)
   | ',' -> Some (Punct Comma)
+  | ';' -> Some (Punct SemiColon)
+  | '=' -> Some (Punct Assign)
   | _ -> None
 
 let create_token (tokens, word_buffer) =
@@ -119,12 +124,19 @@ let operator_to_string op =
   match op with Mul -> "*" | Div -> "/" | Add -> "+" | Sub -> "-"
 
 let punct_to_string p =
-  match p with LParen -> "(" | RParen -> ")" | Comma -> ","
+  match p with
+  | LParen -> "("
+  | RParen -> ")"
+  | Comma -> ","
+  | SemiColon -> ";"
+  | Assign -> "="
 
 let num_to_string num =
   match num with
   | Float f -> Printf.sprintf "%f" f
   | Int i -> Printf.sprintf "%i" i
+
+let keyword_to_string k = match k with Let -> "let"
 
 let token_kind_to_string t =
   match t with
@@ -134,6 +146,7 @@ let token_kind_to_string t =
   | Boolean b -> if b then "true" else "false"
   | Operator op -> operator_to_string op
   | Punct p -> punct_to_string p
+  | Keyword k -> keyword_to_string k
 
 let token_kind_to_string_dbg t =
   match t with
@@ -143,6 +156,7 @@ let token_kind_to_string_dbg t =
   | Boolean b -> if b then "true" else "false"
   | Operator op -> Printf.sprintf "Op(%s)" (operator_to_string op)
   | Punct p -> Printf.sprintf "Punc('%s')" (punct_to_string p)
+  | Keyword k -> keyword_to_string k
 
 let position_to_string pos = Printf.sprintf "%i:%i" pos.line pos.column
 

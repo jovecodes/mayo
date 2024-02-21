@@ -1,4 +1,6 @@
 type ast_node_kind =
+  | Program of ast_node list
+  | LetStatment of string * ast_node
   | BinOp of ast_node * Lexer.operator * ast_node
   | Ident of string
   | StrLit of string
@@ -15,6 +17,9 @@ let span_from_to_token (from_t : Lexer.token) (to_t : Lexer.token) =
     file = from_t.pos.file;
   }
 
+let span_from_pos_and_len (pos : Lexer.position) len =
+  { f = { pos with column = pos.column - len }; t = pos; file = pos.file }
+
 let span_from_to_node (from_n : ast_node) (to_n : ast_node) =
   { f = from_n.span.f; t = to_n.span.t; file = from_n.span.file }
 
@@ -27,6 +32,9 @@ let span_single (t : Lexer.token) =
 
 let rec ast_to_string ast =
   match ast.kind with
+  | Program items -> List.map ast_to_string items |> String.concat ", "
+  | LetStatment (name, value) ->
+      Printf.sprintf "let %s = %s" name (ast_to_string value)
   | BinOp (lhs, op, rhs) ->
       Printf.sprintf "BinOp(%s, %s, %s)" (ast_to_string lhs)
         (Lexer.operator_to_string op)
@@ -59,6 +67,9 @@ let print_ast_span s file =
   let carrots = Log.red_text (String.make (span_len s) '^') in
   Printf.printf "%s%s\n" spaces carrots;
   ()
+
+let print_ast_span_no_file span =
+  print_ast_span span (Util.read_whole_file span.file)
 
 let print_ast_node_span n =
   print_ast_span n.span (Util.read_whole_file n.span.file)
@@ -156,3 +167,59 @@ and parse_expr (tokens : Lexer.token list ref) =
   match primary with
   | Some t -> parse_expression_1 tokens (ref t) 0
   | _ -> failwith "could not parse primary"
+
+and parse_assignment (tokens : Lexer.token list ref) =
+  match !tokens with
+  | { kind = Lexer.Ident ident; _ } :: rest -> (
+      tokens := rest;
+      match !tokens with
+      | { kind = Lexer.Punct Lexer.Assign; _ } :: rest ->
+          tokens := rest;
+          let value = parse_expr tokens in
+          (ident, value)
+      | token :: _ ->
+          Lexer.print_token_span_no_file token;
+          Log.print_fatal "expected '='";
+          failwith "Parsing error"
+      | _ -> failwith "Parsing error. TODO ERROR MESSAGE")
+  | token :: _ ->
+      Lexer.print_token_span_no_file token;
+      Log.print_fatal "expected <ident> = <expr>";
+      failwith "Parsing error"
+  | _ -> failwith "Parsing error. TODO ERROR MESSAGE"
+
+and parse_statement (tokens : Lexer.token list ref) =
+  match !tokens with
+  | { kind = Lexer.Keyword Lexer.Let; pos; len } :: rest -> (
+      tokens := rest;
+      let name, value = parse_assignment tokens in
+      let stmt =
+        {
+          kind = LetStatment (name, value);
+          span = span_from_pos_and_len pos len;
+        }
+      in
+      match !tokens with
+      | { kind = Lexer.Punct Lexer.SemiColon; _ } :: rest ->
+          tokens := rest;
+          stmt
+      | token :: _ ->
+          Lexer.print_token_span_no_file token;
+          Log.print_fatal "expected ';' before here";
+          let file = Util.read_whole_file stmt.span.file in
+          let p = stmt.span.t in
+          let len = Util.get_line_length file stmt.span.t.line in
+          print_ast_span_no_file
+            {
+              f = { line = p.line; column = len - 1; file = p.file };
+              t = { line = p.line; column = len; file = p.file };
+              file = p.file;
+            };
+          Log.print_help "put ';' after here";
+          failwith "Parsing error"
+      | _ -> failwith "Parsing error. TODO ERROR MESSAGE")
+  | token :: _ ->
+      Lexer.print_token_span_no_file token;
+      Log.print_fatal "expected statement";
+      failwith "Parsing error"
+  | _ -> failwith "Parsing error. TODO ERROR MESSAGE"

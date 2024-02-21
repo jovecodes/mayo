@@ -9,5 +9,8 @@ let print_error message =
 let print_fatal message =
   print_endline (bold_text (red_text "Fatal: ") ^ message)
 
+let print_help message =
+  print_endline (bold_text (green_text "Help: ") ^ message)
+
 let print_warn message =
   print_endline (bold_text (magenta_text "Warning: ") ^ message)

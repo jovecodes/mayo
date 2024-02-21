@@ -22,3 +22,9 @@ let rec last_of_list l =
   | _ :: rest ->
       last_of_list
         rest (* Recursive case: discard the first element and continue *)
+
+let get_line_length file_content line_number =
+  let lines = String.split_on_char '\n' file_content in
+  match List.nth_opt lines (line_number - 1) with
+  | Some line -> String.length line
+  | None -> failwith "Line number out of range"
