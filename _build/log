@@ -1,4 +1,4 @@
-# dune exec mayo ./test.txt
+# dune exec mayo ./test.mayo
 # OCAMLPARAM: unset
 # Shared cache: disabled
 # Shared cache location: /home/jove/.cache/dune/db
@@ -19,4 +19,4 @@
 #        }
 #  ; instrument_with = []
 #  }
-$ /home/jove/.opam/default/bin/ocamlc.opt -config > /tmp/dune_0b40a5_output
+$ /home/jove/.opam/default/bin/ocamlc.opt -config > /tmp/dune_767d81_output

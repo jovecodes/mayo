@@ -58,6 +58,12 @@ let op_prec op = match op with Add -> 1 | Sub -> 1 | Mul -> 2 | Div -> 2
 let precedence token =
   match token.kind with Operator op -> op_prec op | _ -> 0
 
+let rec advance_single_comment file =
+  match file with
+  | '\n' :: rest -> rest
+  | _ :: rest -> advance_single_comment rest
+  | _ -> file
+
 let lex file_content file_path =
   let position = { line = 1; column = 1; file = file_path } in
   let rec impl (file, tokens, word_buffer, pos, last_pos) =
@@ -73,6 +79,24 @@ let lex file_content file_path =
         impl (rest, push_token (), "", advance_pos (pos, '\n'), last_pos)
     | ' ' :: rest ->
         impl (rest, push_token (), "", advance_pos (pos, ' '), last_pos)
+    | '/' :: rest -> (
+        let tokens = push_token () in
+        match rest with
+        | '/' :: _ ->
+            impl
+              ( advance_single_comment rest,
+                tokens,
+                "",
+                advance_pos (pos, '\n'),
+                last_pos )
+        | _ ->
+            impl
+              ( rest,
+                tokens
+                @ [ { kind = Util.unwrap (token_from_char '/'); pos; len = 1 } ],
+                "",
+                advance_pos (pos, ' '),
+                last_pos ))
     | c :: rest when Option.is_some (token_from_char c) ->
         impl
           ( rest,
