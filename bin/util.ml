@@ -14,3 +14,11 @@ let read_whole_file filename =
   let s = really_input_string ch (in_channel_length ch) in
   close_in ch;
   s
+
+let rec last_of_list l =
+  match l with
+  | [] -> failwith "Empty list"
+  | [ x ] -> x (* Base case: single element in the list *)
+  | _ :: rest ->
+      last_of_list
+        rest (* Recursive case: discard the first element and continue *)

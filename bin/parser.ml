@@ -2,6 +2,7 @@ type ast_node_kind =
   | BinOp of ast_node * Lexer.operator * ast_node
   | Ident of string
   | Number of Lexer.number
+  | Funcall of ast_node * ast_node list
 
 and ast_node = { kind : ast_node_kind; span : span }
 and span = { f : Lexer.position; t : Lexer.position; file : string }
@@ -31,6 +32,9 @@ let rec ast_to_string ast =
         (ast_to_string rhs)
   | Ident s -> s
   | Number num -> Lexer.num_to_string num
+  | Funcall (id, args) ->
+      let args_str = List.map ast_to_string args in
+      Printf.sprintf "%s(%s)" (ast_to_string id) (String.concat ", " args_str)
 
 let should_keep_going (tokens : Lexer.token list) min_prec =
   match tokens with
@@ -57,13 +61,40 @@ let print_ast_span s file =
 let print_ast_node_span n =
   print_ast_span n.span (Util.read_whole_file n.span.file)
 
-let rec parse_primary (tokens : Lexer.token list ref) =
+let rec parse_args (tokens : Lexer.token list ref) args =
+  match !tokens with
+  | { kind = Lexer.Punct Lexer.LParen; _ } :: rest ->
+      tokens := rest;
+      parse_args tokens (args @ [ parse_expr tokens ])
+  | { kind = Lexer.Punct Lexer.Comma; _ } :: rest ->
+      tokens := rest;
+      parse_args tokens (args @ [ parse_expr tokens ])
+  | { kind = Lexer.Punct Lexer.RParen; _ } :: rest ->
+      tokens := rest;
+      args
+  | token :: _ ->
+      Lexer.print_token_span_no_file token;
+      failwith "Parsing error"
+  | _ ->
+      Log.print_fatal "expected function call but got EOF";
+      failwith "Parsing error"
+
+and parse_primary (tokens : Lexer.token list ref) =
   match !tokens with
   | token :: rest -> (
       match token.kind with
-      | Lexer.Ident id ->
+      | Lexer.Ident id -> (
           tokens := rest;
-          Some { kind = Ident id; span = span_single token }
+          let id_node = { kind = Ident id; span = span_single token } in
+          match !tokens with
+          | { kind = Lexer.Punct Lexer.LParen; _ } :: _ ->
+              let args = parse_args tokens [] in
+              Some
+                {
+                  kind = Funcall (id_node, args);
+                  span = span_from_to_node id_node (Util.last_of_list args);
+                }
+          | _ -> Some id_node)
       | Lexer.Number num ->
           tokens := rest;
           Some { kind = Number num; span = span_single token }
@@ -76,9 +107,9 @@ let rec parse_primary (tokens : Lexer.token list ref) =
           match !tokens with
           | { kind = Lexer.Punct Lexer.RParen; _ } :: rest ->
               tokens := rest;
-              token
+              Some token
           | _ ->
-              print_ast_node_span (Util.unwrap token);
+              print_ast_node_span token;
               Log.print_fatal "expected ')' after expression";
               None)
       | _ ->
@@ -117,5 +148,5 @@ and parse_expression_1 (tokens : Lexer.token list ref) (lhs : ast_node ref)
 and parse_expr (tokens : Lexer.token list ref) =
   let primary = parse_primary tokens in
   match primary with
-  | Some t -> Some (parse_expression_1 tokens (ref t) 0)
+  | Some t -> parse_expression_1 tokens (ref t) 0
   | _ -> failwith "could not parse primary"

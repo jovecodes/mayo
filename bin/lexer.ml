@@ -1,7 +1,7 @@
 type number = Float of float | Int of int
 type operator = Mul | Div | Add | Sub
 type position = { line : int; column : int; file : string }
-type punct = LParen | RParen
+type punct = LParen | RParen | Comma
 
 type token_kind =
   | Ident of string
@@ -41,6 +41,7 @@ let token_from_char c =
   | '-' -> Some (Operator Sub)
   | '(' -> Some (Punct LParen)
   | ')' -> Some (Punct RParen)
+  | ',' -> Some (Punct Comma)
   | _ -> None
 
 let create_token (tokens, word_buffer) =
@@ -90,7 +91,8 @@ let lex file_content file_path =
 let operator_to_string op =
   match op with Mul -> "*" | Div -> "/" | Add -> "+" | Sub -> "-"
 
-let punct_to_string p = match p with LParen -> "(" | RParen -> ")"
+let punct_to_string p =
+  match p with LParen -> "(" | RParen -> ")" | Comma -> ","
 
 let num_to_string num =
   match num with
@@ -139,6 +141,9 @@ let print_token_span (t, file) =
   let carrots = Log.red_text (String.make t.len '^') in
   Printf.printf "%s%s\n" spaces carrots;
   ()
+
+let print_token_span_no_file t =
+  print_token_span (t, Util.read_whole_file t.pos.file)
 
 let tokens_to_string tokens =
   List.map (function t -> token_to_string t) tokens |> String.concat ", "
