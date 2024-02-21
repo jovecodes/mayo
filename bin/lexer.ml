@@ -6,6 +6,7 @@ type punct = LParen | RParen | Comma
 type token_kind =
   | Ident of string
   | Number of number
+  | StrLit of string
   | Boolean of bool
   | Operator of operator
   | Punct of punct
@@ -22,6 +23,8 @@ let advance_pos (pos, c) =
 let token_from_string string =
   match string with
   | "" -> None
+  | string when String.starts_with ~prefix:"\"" string ->
+      Some (StrLit (String.sub string 1 (String.length string - 2)))
   | "true" | "false" -> Some (Boolean (bool_of_string string))
   | _ -> (
       try
@@ -103,6 +106,7 @@ let token_kind_to_string t =
   match t with
   | Ident id -> id
   | Number num -> num_to_string num
+  | StrLit string -> Printf.sprintf "\"%s\"" string
   | Boolean b -> if b then "true" else "false"
   | Operator op -> operator_to_string op
   | Punct p -> punct_to_string p
@@ -111,6 +115,7 @@ let token_kind_to_string_dbg t =
   match t with
   | Ident id -> Printf.sprintf "Ident(%s)" id
   | Number num -> num_to_string num
+  | StrLit string -> Printf.sprintf "\"%s\"" string
   | Boolean b -> if b then "true" else "false"
   | Operator op -> Printf.sprintf "Op(%s)" (operator_to_string op)
   | Punct p -> Printf.sprintf "Punc('%s')" (punct_to_string p)

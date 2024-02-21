@@ -1,6 +1,7 @@
 type ast_node_kind =
   | BinOp of ast_node * Lexer.operator * ast_node
   | Ident of string
+  | StrLit of string
   | Number of Lexer.number
   | Funcall of ast_node * ast_node list
 
@@ -31,6 +32,7 @@ let rec ast_to_string ast =
         (Lexer.operator_to_string op)
         (ast_to_string rhs)
   | Ident s -> s
+  | StrLit string -> Printf.sprintf "\"%s\"" string
   | Number num -> Lexer.num_to_string num
   | Funcall (id, args) ->
       let args_str = List.map ast_to_string args in
@@ -98,6 +100,9 @@ and parse_primary (tokens : Lexer.token list ref) =
       | Lexer.Number num ->
           tokens := rest;
           Some { kind = Number num; span = span_single token }
+      | Lexer.StrLit str ->
+          tokens := rest;
+          Some { kind = StrLit str; span = span_single token }
       | Lexer.Punct Lexer.LParen -> (
           (match !tokens with
           | { kind = Lexer.Punct Lexer.LParen; _ } :: rest -> tokens := rest
@@ -113,6 +118,7 @@ and parse_primary (tokens : Lexer.token list ref) =
               Log.print_fatal "expected ')' after expression";
               None)
       | _ ->
+          Lexer.print_token_span_no_file token;
           Log.print_fatal
             (Printf.sprintf "Unexpected token %s" (Lexer.token_to_string token));
           None)
